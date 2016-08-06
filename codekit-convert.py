@@ -4,6 +4,8 @@ import sys
 import json
 import os
 
+debug = True
+
 fileTypes = {
     "php"  : 8192,
     "js"   : 64,
@@ -14,10 +16,10 @@ fileTypes = {
 
 }
 
-def genJsSection(source, minimise=False, genSourceMap=False):
-    sourceDir = os.path.dirname(source)
+def genJsSection(source, destName, minimise=False, genSourceMap=False):
+    dests = os.path.split(destName)
 
-    section = "gulp.src('" + source + "')\n"\
+    section = "gulp.src('." + source + "')\n"\
     ".pipe(include())\n"\
     "    .on('error', console.log)\n"
     if minimise:
@@ -29,8 +31,8 @@ def genJsSection(source, minimise=False, genSourceMap=False):
         suffix = "min"
     else:
         suffix = "dist"
-    section = section + ".pipe(rename({suffix: '-" + suffix + "''}))\n"\
-    ".pipe(gulp.dest('./" + sourceDir + "'));"
+    section = section + ".pipe(rename({basename: '" + dests[1] + "'}))\n"\
+    ".pipe(gulp.dest('." + dests[0] + "'));\n\n"
     return section
 
 gulpBase = """
@@ -82,16 +84,18 @@ gulp.task('watch', function() {
     gulp.watch(['js/main.js', 'js/interactive-map/interactive-map.js'], ['js']);
     gulp.watch('**/*.php', ['php']);
     
-    gulp.src(__filename)
-        .pipe(open(\{uri: '**** SERVER URI ****'\}));
+    **** SERVER URI ****
 });
 
-gulp.task('default', ['watch', 'less']);
+gulp.task('default', ['watch', 'less', 'js']);
 """
 
 def main():
+    global gulpBase
+    javascriptSections = ''
+
     if len(sys.argv) < 2:
-        print "You need to pass a codekit config file as the second argument"
+        print "You need to pass a Codekit config file as the second argument"
         sys.exit(1)
 
     codekitFile = sys.argv[1]
@@ -104,8 +108,33 @@ def main():
 
     # print json.dumps(codekitData['files'])
     # print genJsSection('js/test.js', False, True)
-    print len(codekitData['files'])
+    # print len(codekitData['files'])
+    # print genJsSection('js/test.js')
 
+    for file in codekitData['files']:
+        data = codekitData['files'][file]
+        if data['fileType'] == fileTypes['js']:
+            if data['ignore'] == 0:
+                # print "we need an output"
+                javascriptSections = javascriptSections + genJsSection(file, data['outputAbbreviatedPath'], True)
+
+    gulpBase = gulpBase.replace("**** JS SECTIONS ****", javascriptSections)
+
+    if codekitData['projectSettings']['alwaysUseExternalServer'] is 1:
+        serverString = "gulp.src(__filename)\n"\
+        "        .pipe(open({uri: '" + codekitData['projectSettings']['externalServerAddress'] + "'}));"
+
+        gulpBase = gulpBase.replace("**** SERVER URI ****", serverString)
+
+    if debug:
+        print gulpBase
+    # else:
+    #     try:
+    #         with open('gulpfile.js', 'w') as fp:
+    #             fp.write(gulpBase)
+    #     except IOError:
+    #         print "Couldn't write gulpfile.js"
+    #         sys.exit(1)
 
 if __name__ == "__main__":
     main()
