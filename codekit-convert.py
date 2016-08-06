@@ -81,7 +81,7 @@ gulp.task('php', function() {
 gulp.task('watch', function() {
     livereload.listen();
     gulp.watch('css/*.less', ['less']);
-    gulp.watch(['js/main.js', 'js/interactive-map/interactive-map.js'], ['js']);
+    gulp.watch(**** JS WATCH FILES ****, ['js']);
     gulp.watch('**/*.php', ['php']);
     
     **** SERVER URI ****
@@ -93,6 +93,7 @@ gulp.task('default', ['watch', 'less', 'js']);
 def main():
     global gulpBase
     javascriptSections = ''
+    jsWatchFiles = []
 
     if len(sys.argv) < 2:
         print "You need to pass a Codekit config file as the second argument"
@@ -117,8 +118,10 @@ def main():
             if data['ignore'] == 0:
                 # print "we need an output"
                 javascriptSections = javascriptSections + genJsSection(file, data['outputAbbreviatedPath'], True)
+                jsWatchFiles.append(str(file))
 
     gulpBase = gulpBase.replace("**** JS SECTIONS ****", javascriptSections)
+    gulpBase = gulpBase.replace("**** JS WATCH FILES ****", str(jsWatchFiles))
 
     if codekitData['projectSettings']['alwaysUseExternalServer'] is 1:
         serverString = "gulp.src(__filename)\n"\
